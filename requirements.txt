@@ -1,0 +1,22 @@
+# --- Core Signal Processing & DSP ---
+numpy>=1.24.0
+scipy>=1.10.0
+soundfile>=0.12.1
+
+# --- Deep Learning & Neural Inference ---
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# --- Dashboard & Interactive Visualizations ---
+streamlit>=1.30.0
+plotly>=5.18.0
+pandas>=2.0.0
+
+# --- Google Gemini AI Analyst ---
+google-genai>=2.0.0
+
+# --- Forensic PDF Generation & Matplotlib Charts ---
+reportlab>=4.0.0
+matplotlib>=3.7.0
+
+python-dotenv>=1.0.0
