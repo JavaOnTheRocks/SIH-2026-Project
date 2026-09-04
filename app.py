@@ -11,6 +11,7 @@ from src.classifier import classify_signal
 from src.utils.synthetic_gen import build_full_sample_library
 from src.ai_analyst import analyze_signal_with_gemini
 from src.pdf_report import generate_pdf_report
+from src.demodulator import demodulate_signal
 
 # Load environment variables from .env file securely
 load_dotenv()
@@ -152,6 +153,16 @@ if active_file:
     metrics = extract_signal_metrics(data, fs)
     classification = classify_signal(data, meta["is_complex"], sample_rate=fs, filename=filename)
 
+    # ============================================================
+    # DEMODULATION ENGINE
+    # ============================================================
+
+    demodulation = demodulate_signal(
+        data=data,
+        modulation=classification["predicted_signature"],
+        is_complex=meta["is_complex"]
+    )
+
     # 3. Gemini AI Intelligence Analysis (Uses .env key directly)
     with st.spinner("Generating Intelligence Assessment..."):
         ai_insights = analyze_signal_with_gemini(GEMINI_API_KEY, meta, metrics, classification)
@@ -179,7 +190,7 @@ if active_file:
     st.markdown(f"""
     <div class="ai-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="color: #38bdf8; font-weight: 800; font-size: 0.95rem;">🤖 GEMINI AI TACTICAL THREAT ASSESSMENT</span>
+            <span style="color: #38bdf8; font-weight: 800; font-size: 0.95rem;">GEMINI AI TACTICAL THREAT ASSESSMENT</span>
             <span style="color: {threat_color}; font-weight: 800; font-size: 0.85rem; font-family: 'JetBrains Mono';">THREAT: {ai_insights.get('threat_level', 'UNKNOWN')}</span>
         </div>
         <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 8px; line-height: 1.5;">{ai_insights.get('executive_summary', '')}</p>
@@ -200,12 +211,13 @@ if active_file:
     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
     # Visual Diagnostics Tabs
-    tab_overview, tab_spectral, tab_time, tab_constellation, tab_capabilities = st.tabs([
-        "📊 Dual Diagnostics (PSD + Spectrogram)",
-        "📈 Spectral Profile",
-        "🌊 Time Domain",
-        "🎯 Constellation & AI Verification",
-        "🛡️ System Capabilities & Architecture"
+    tab_overview, tab_spectral, tab_time, tab_constellation, tab_demodulation , tab_capabilities = st.tabs([
+        "Dual Diagnostics",
+        "Spectral Profile",
+        "Time Domain",
+        "Constellation & AI Verification",
+        "Demodulation",
+        "System Capabilities & Architecture"
     ])
 
     plotly_layout_dark = dict(
@@ -217,6 +229,96 @@ if active_file:
         xaxis=dict(gridcolor='#1e293b', zerolinecolor='#334155'),
         yaxis=dict(gridcolor='#1e293b', zerolinecolor='#334155')
     )
+
+    with tab_demodulation:
+
+        st.markdown("## 🔓 Signal Demodulation")
+
+        st.markdown("Convert the detected digital modulation into a recoverable binary bitstream."
+    )
+
+        if demodulation.get("success", False):
+
+            # ====================================================
+            # SUCCESS HEADER
+            # ====================================================
+
+            st.success(
+                f"Successfully demodulated {demodulation['modulation']}"
+            )
+
+            bits = demodulation["bits"]
+
+            # ====================================================
+            # METRICS
+            # ====================================================
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric(
+                    "Detected Modulation",
+                    demodulation["modulation"]
+                )
+
+            with col2:
+                st.metric(
+                    "Recovered Bits",
+                    f"{len(bits):,}"
+                )
+
+            with col3:
+                st.metric(
+                    "Recovered Bytes",
+                    f"{len(bits)//8:,}"
+                )
+
+            st.divider()
+
+            # ====================================================
+            # BITSTREAM PREVIEW
+            # ====================================================
+
+            st.markdown("###Recovered Binary Bitstream")
+
+            preview = demodulation["bitstream"][:256]
+
+            formatted_bits = " ".join(
+                preview[i:i+8]
+                for i in range(0, len(preview), 8)
+            )
+
+            st.code(
+                formatted_bits,
+                language=None
+            )
+
+            st.caption(
+                f"Showing first {min(256, len(preview))} recovered bits."
+            )
+
+            st.divider()
+
+            # ====================================================
+            # DOWNLOAD BUTTON
+            # ====================================================
+
+            st.download_button(
+                label="Download Complete Bitstream",
+                data=demodulation["bitstream"],
+                file_name=f"{filename}_bitstream.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+
+        else:
+
+            st.warning(
+                demodulation.get(
+                    "message",
+                    "Demodulation is currently unavailable for this signal."
+                )
+            )
 
     with tab_overview:
         c_left, c_right = st.columns(2)
@@ -271,7 +373,7 @@ if active_file:
                 st.info("Polar Constellation analysis applies to complex (I/Q) baseband signals.")
                 
         with col_c_info:
-            st.markdown("#### 🧠 **AI Neural AMC & DSP Priors**")
+            st.markdown("####**AI Neural AMC & DSP Priors**")
             st.caption(f"Engine: `{classification.get('model_architecture', '1D-ResNet + DSP Hybrid')}`")
             for p in classification.get("top_3_predictions", []):
                 st.write(f"**{p['class']}** ({p['probability']*100:.1f}%)")
@@ -289,7 +391,7 @@ if active_file:
                 st.write(f"• **Zero Crossing Rate:** `{priors.get('zero_crossing_rate', 0):.4f}`")
 
     with tab_capabilities:
-        st.markdown("### 🛡️ **System Technical Capabilities & Architecture**")
+        st.markdown("###**System Technical Capabilities & Architecture**")
         st.caption("Engineered for Smart India Hackathon (SIH 2026) | Problem Statement: Automated IQ & Audio Characterization")
         
         col_c1, col_c2 = st.columns(2)
@@ -349,7 +451,7 @@ else:
 
     st.markdown("""
     <div class="landing-card">
-        <h3 style="color: #f8fafc; margin-top: 0;">🚀 Ready for Signal Ingestion</h3>
+        <h3 style="color: #f8fafc; margin-top: 0;">Ready for Signal Ingestion</h3>
         <p style="color: #94a3b8; font-size: 0.95rem;">
             To begin signal telemetry analysis and generate diagnostic reports, use the <b>left sidebar controller</b> to:
         </p>
@@ -361,13 +463,13 @@ else:
         <h4 style="color: #38bdf8; margin-bottom: 12px;">Supported Analysis Modes</h4>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div class="feature-card">
-                <div class="feature-title">📡 Digitized Radio Frequency (.iq / .raw)</div>
+                <div class="feature-title">Digitized Radio Frequency (.iq / .raw)</div>
                 <div style="color: #94a3b8; font-size: 0.85rem;">
                     Welch Power Spectral Density, Center Frequency Offset ($f_c$), 99% Occupied Bandwidth, Noise Floor, PAPR, IQ Constellation Diagram, and 1D-CNN Modulation Classification.
                 </div>
             </div>
             <div class="feature-card">
-                <div class="feature-title">🔊 Acoustic Waveforms (.wav)</div>
+                <div class="feature-title">Acoustic Waveforms (.wav)</div>
                 <div style="color: #94a3b8; font-size: 0.85rem;">
                     Short-Time Fourier Transform (STFT) 2D Spectrograms, Time-Domain Waveforms, Harmonic Spectral Analysis, and Deep Learning Acoustic Event Classification.
                 </div>
@@ -375,3 +477,4 @@ else:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
